@@ -13,4 +13,4 @@ $ENV{HOME}/lib)
 
 add_executable(test_rank ${TEST_SRCS}) 
 
-target_link_libraries(test_parser pthread fqfeeder z)
+target_link_libraries(test_rank pthread fqfeeder z)
