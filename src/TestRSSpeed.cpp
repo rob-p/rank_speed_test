@@ -1,5 +1,6 @@
 #include "bar.h"
 #include "rank9b.h"
+#include "rank9.h"
 #include "FastxParser.hpp"
 #include "ScopedTimer.hpp"
 #include "poppy.h"
@@ -18,29 +19,35 @@ std::vector<uint32_t> getGCCount(std::string& txp) {
   return gc;
 }
 
+template <typename T>
 class GCRank {
 public:
   GCRank() {}
 
-  GCRank(BIT_ARRAY* ba) {
-    r_.reset(new Poppy(ba->words, ba->num_of_bits));
+  GCRank(BIT_ARRAY* ba) : ba_(ba){
+    r_.reset(new T(ba->words, ba->num_of_bits));
   }
 
   GCRank(GCRank&& other) {
+    std::swap(ba_, other.ba_);
     r_.swap(other.r_);
   }
 
   GCRank& operator=(GCRank&& other) {
+    std::swap(ba_, other.ba_);
     r_.swap(other.r_);
     return *this;
   }
 
   inline uint64_t operator[](size_t i) { return r_->rank(i); }
+  BIT_ARRAY* getBA() { return ba_; }
 private:
-  std::unique_ptr<Poppy> r_{nullptr};
+  BIT_ARRAY* ba_;
+  std::unique_ptr<T> r_{nullptr};
 };
 
-GCRank getGCCountRank(std::string& txp) {
+template <typename T>
+GCRank<T> getGCCountRank(std::string& txp) {
   BIT_ARRAY* ba = bit_array_create(txp.length());
 
   for (size_t i = 0; i < txp.length(); ++i) {
@@ -48,7 +55,7 @@ GCRank getGCCountRank(std::string& txp) {
       bit_array_set(ba, i);
     }
   }
-  return GCRank(ba);
+  return GCRank<T>(ba);
 }
 
 int main(int argc, char* argv[]) {
@@ -62,6 +69,7 @@ int main(int argc, char* argv[]) {
   // communicate with the parser (*once per-thread*)
   auto rg = parser.getReadGroup();
 
+  size_t tnum{0};
   while (parser.refill(rg)) {
     // Here, rg will contain a chunk of read pairs
     // we can process.
@@ -70,6 +78,8 @@ int main(int argc, char* argv[]) {
       transform(r1.begin(), r1.end(), r1.begin(), ::toupper);
       txpString += r1;
     }
+    //++tnum;
+    //if(tnum > 1) { break; }
   }
 
 
@@ -82,14 +92,47 @@ int main(int argc, char* argv[]) {
   }
   std::cerr << "done\n";
 
-  GCRank gcR;
+  GCRank<rank9b> gcR9b;
   std::cerr << "creating GC Rank vector ..";
   {
     ScopedTimer t;
-    gcR = getGCCountRank(txpString);
+    gcR9b = getGCCountRank<rank9b>(txpString);
   }
   std::cerr << "done\n";
 
+  GCRank<rank9> gcR9;
+  std::cerr << "creating GC Rank vector ..";
+  {
+    ScopedTimer t;
+    gcR9 = getGCCountRank<rank9>(txpString);
+  }
+  std::cerr << "done\n";
+
+  GCRank<Poppy> gcPoppy;
+  std::cerr << "creating GC Rank vector ..";
+  {
+    ScopedTimer t;
+    gcPoppy = getGCCountRank<Poppy>(txpString);
+  }
+  std::cerr << "done\n";
+
+  /*
+  std::cerr << txpString.substr(0, 50);
+  std::cerr << "\n";
+  char* bitstr = new char[51];
+  bitstr[50] = '\0';
+  bit_array_to_substr(gcPoppy.getBA(), 0, 50, bitstr, '1', '0', 1);
+  std::cerr << bitstr << "\n";
+  for (size_t i = 0; i < 50; ++i) {
+    std::cerr << gcPoppy[i+1] << ", ";
+  }
+  std::cerr << "\n";
+  for (size_t i = 0; i < 50; ++i) {
+    std::cerr << gcR9[i+1] << ", ";
+  }
+  std::cerr << "\n";
+  return 0;
+  */
 
   std::cerr << "generating random queries ...";
   std::random_device rd;  //Will be used to obtain a seed for the random number engine
@@ -97,7 +140,7 @@ int main(int argc, char* argv[]) {
   std::uniform_int_distribution<> dis(1, txpString.length() - 500);
   // values near the mean are the most likely
   // standard deviation affects the dispersion of generated values from the mean
-  std::normal_distribution<> d(5,2);
+  std::normal_distribution<> d(200,20);
   size_t nsamp = 100000000;
   std::vector<uint32_t> starts(nsamp);
   std::vector<uint32_t> lens(nsamp);
@@ -121,32 +164,64 @@ int main(int argc, char* argv[]) {
   }
   std::cerr << "done\n";
 
-  std::vector<uint32_t> statsVecRank(starts.size());
-  std::cerr << "querying with vector ...";
+  std::vector<uint32_t> statsVecRank9(starts.size());
+  std::cerr << "querying with rank9 ...";
   {
     ScopedTimer t;
     for (size_t i = 0; i < starts.size(); ++i) {
-      statsVecRank[i] = gcR[starts[i] + lens[i]] - gcR[starts[i]];
+      statsVecRank9[i] = gcR9[starts[i] + lens[i]] - gcR9[starts[i]];
     }
   }
   std::cerr << "done\n";
 
 
-  bool same = (statsVec == statsVecRank);
-  std::cerr << "are they the same? ... " << std::boolalpha << same << "\n";
-  
+  std::vector<uint32_t> statsVecRank9b(starts.size());
+  std::cerr << "querying with rank9b ...";
+  {
+    ScopedTimer t;
+    for (size_t i = 0; i < starts.size(); ++i) {
+      statsVecRank9b[i] = gcR9b[starts[i] + lens[i]] - gcR9b[starts[i]];
+    }
+  }
+  std::cerr << "done\n";
+
+  std::vector<uint32_t> statsVecRankPoppy(starts.size());
+  std::cerr << "querying with rank poppy ...";
+  {
+    ScopedTimer t;
+    for (size_t i = 0; i < starts.size(); ++i) {
+      statsVecRankPoppy[i] = gcPoppy[starts[i] + lens[i]] - gcPoppy[starts[i]];
+    }
+  }
+  std::cerr << "done\n";
+
+
+
+  bool same = (statsVec == statsVecRank9);
+  std::cerr << "rank9 is same ? ... " << std::boolalpha << same << "\n";
+  same = (statsVec == statsVecRank9b);
+  std::cerr << "rank9b is same ? ... " << std::boolalpha << same << "\n";
+  same = (statsVec == statsVecRankPoppy);
+  std::cerr << "rank poppy is same ? ... " << std::boolalpha << same << "\n";
+  /*
   if (!same) {
     for (size_t i = 0; i < starts.size(); ++i) {
       auto x = statsVec[i] ;
       auto y = statsVecRank[i] ;
       if (x != y) {
-        std::cerr << statsVec[i] << "\t" << statsVecRank[i] << "\t" << txpString.substr(starts[i], lens[i]) << "\t(" << starts[i] << ", " << lens[i] << ")\t" ;
+        std::cerr << statsVec[i] << "\t" << statsVecRank[i] << "\t" << txpString.substr(starts[i], lens[i]) << "\t(" << starts[i] << ", " << lens[i] << ")\n\t" ;
         for(size_t j = starts[i]-1; j < starts[i] + lens[i] + 1; ++j) {
           std::cerr << gcVec[j] << ", ";
+        }
+        std::cerr << "\n\t";
+        for(size_t j = starts[i]-1; j < starts[i] + lens[i] + 1; ++j) {
+          std::cerr << gcR[j] << ", ";
         }
         std::cerr << "\n";
       }
     }
   }
-  
+  */
+
+  return EXIT_SUCCESS;
 }

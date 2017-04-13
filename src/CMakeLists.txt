@@ -1,4 +1,4 @@
-set(TEST_SRCS TestRSSpeed.cpp rank9b.cpp bit_array.c poppy.cpp)
+set(TEST_SRCS TestRSSpeed.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp)
 
 set(FQFEEDER_LIB_SRCS FastxParser.cpp)
 
