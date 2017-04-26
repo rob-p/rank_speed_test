@@ -47,13 +47,25 @@ private:
 };
 
 template <typename T>
-GCRank<T> getGCCountRank(std::string& txp) {
+GCRank<T> getGCCountRank(std::string& txp, bool rev=false) {
   BIT_ARRAY* ba = bit_array_create(txp.length());
 
   for (size_t i = 0; i < txp.length(); ++i) {
     if (txp[i] == 'G' or txp[i] == 'C') {
       bit_array_set(ba, i);
     }
+  }
+  if (rev) {
+    //bit_array_reverse(ba);
+  
+  size_t i;
+  for (i = 0; i + 64 < txp.length(); i += 64) {
+    bit_array_reverse_region(ba, i, 64);
+  }
+  if (i < txp.length()) {
+    bit_array_reverse_region(ba, i, txp.length() - i);
+  }
+  
   }
   return GCRank<T>(ba);
 }
@@ -112,22 +124,22 @@ int main(int argc, char* argv[]) {
   std::cerr << "creating GC Rank vector ..";
   {
     ScopedTimer t;
-    gcPoppy = getGCCountRank<Poppy>(txpString);
+    gcPoppy = getGCCountRank<Poppy>(txpString, true);
   }
   std::cerr << "done\n";
 
   /*
-  std::cerr << txpString.substr(0, 50);
+  std::cerr << txpString.substr(0, 64);
   std::cerr << "\n";
-  char* bitstr = new char[51];
-  bitstr[50] = '\0';
-  bit_array_to_substr(gcPoppy.getBA(), 0, 50, bitstr, '1', '0', 1);
+  char* bitstr = new char[65];
+  bitstr[64] = '\0';
+  bit_array_to_substr(gcPoppy.getBA(), 0, 64, bitstr, '1', '0', 1);
   std::cerr << bitstr << "\n";
-  for (size_t i = 0; i < 50; ++i) {
+  for (size_t i = 0; i < 64; ++i) {
     std::cerr << gcPoppy[i+1] << ", ";
   }
   std::cerr << "\n";
-  for (size_t i = 0; i < 50; ++i) {
+  for (size_t i = 0; i < 64; ++i) {
     std::cerr << gcR9[i+1] << ", ";
   }
   std::cerr << "\n";
@@ -137,11 +149,11 @@ int main(int argc, char* argv[]) {
   std::cerr << "generating random queries ...";
   std::random_device rd;  //Will be used to obtain a seed for the random number engine
   std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<> dis(1, txpString.length() - 500);
+  std::uniform_int_distribution<> dis(1, txpString.length() - 5000);
   // values near the mean are the most likely
   // standard deviation affects the dispersion of generated values from the mean
   std::normal_distribution<> d(200,20);
-  size_t nsamp = 100000000;
+  size_t nsamp = 10000000;
   std::vector<uint32_t> starts(nsamp);
   std::vector<uint32_t> lens(nsamp);
   for (size_t i = 0; i < nsamp; ++i) {
@@ -203,25 +215,23 @@ int main(int argc, char* argv[]) {
   std::cerr << "rank9b is same ? ... " << std::boolalpha << same << "\n";
   same = (statsVec == statsVecRankPoppy);
   std::cerr << "rank poppy is same ? ... " << std::boolalpha << same << "\n";
-  /*
   if (!same) {
     for (size_t i = 0; i < starts.size(); ++i) {
       auto x = statsVec[i] ;
-      auto y = statsVecRank[i] ;
+      auto y = statsVecRankPoppy[i] ;
       if (x != y) {
-        std::cerr << statsVec[i] << "\t" << statsVecRank[i] << "\t" << txpString.substr(starts[i], lens[i]) << "\t(" << starts[i] << ", " << lens[i] << ")\n\t" ;
+        std::cerr << statsVec[i] << "\t" << statsVecRankPoppy[i] << "\t" << txpString.substr(starts[i], lens[i]) << "\t(" << starts[i] << ", " << lens[i] << ")\n\t" ;
         for(size_t j = starts[i]-1; j < starts[i] + lens[i] + 1; ++j) {
           std::cerr << gcVec[j] << ", ";
         }
         std::cerr << "\n\t";
         for(size_t j = starts[i]-1; j < starts[i] + lens[i] + 1; ++j) {
-          std::cerr << gcR[j] << ", ";
+          std::cerr << gcPoppy[j] << ", ";
         }
         std::cerr << "\n";
       }
     }
   }
-  */
 
   return EXIT_SUCCESS;
 }
