@@ -56,11 +56,20 @@ static IDX get(const W* p, unsigned int b, unsigned int o) {
     mask                     = ~(W)0 >> (Wbits - over);
     res                     |= (*(p + 1) & mask) << (b - over);
   }
-  //if(std::is_signed<IDX>::value && res & ((IDX)1 << (b - 1)))
-  //  res |= ~(IDX)0 << b;
+  if(std::is_signed<IDX>::value && res & ((IDX)1 << (b - 1)))
+    res |= ~(IDX)0 << b;
 
   return res;
 }
+
+template<typename IDX, typename W, unsigned int UB>
+static IDX get(const W* p, unsigned int o) {
+  static constexpr size_t Wbits  = bitsof<W>::val;
+  static constexpr W      ubmask = ~(W)0 >> (Wbits - UB);
+  W                       mask   = ((~(W)0 >> (Wbits - 1)) << o) & ubmask;
+  return (*p & mask) >> o;
+}
+
 
 template<typename W, bool TS>
 struct mask_store { };
@@ -223,7 +232,7 @@ public:
 
   IDX operator*() const {
     const Derived& self = *static_cast<const Derived*>(this);
-    return get<IDX, W, UB>(self.ptr, self.bits, self.offset);
+    return (self.bits>1) ? get<IDX, W, UB>(self.ptr, self.bits, self.offset) : get<IDX, W, UB>(self.ptr, self.offset);
   }
 
   bool operator==(const Derived& rhs) const {
@@ -367,12 +376,12 @@ public:
   // Get some number of bits
   W get_bits(unsigned int bits) const {
     const Derived& self  = *static_cast<const Derived*>(this);
-    return get<W, W, UB>(self.ptr, bits, self.offset);
+    return (bits>1) ? get<W, W, UB>(self.ptr, bits, self.offset) : get<W, W, UB>(self.ptr, self.offset);
   }
 
   W get_bits(unsigned int bits, unsigned int offset) const {
     const Derived& self  = *static_cast<const Derived*>(this);
-    return get<W, W, UB>(self.ptr, bits, offset);
+    return (bits>1) ? get<W, W, UB>(self.ptr, bits, offset) : get<W, W, UB>(self.ptr, offset);
   }
 
   template<bool TS = false>
@@ -472,7 +481,7 @@ class setter {
   typedef compact::iterator<IDX, W, TS, UB> iterator;
 public:
   setter(W* p, int b, int o) : ptr(p), bits(b), offset(o) { }
-  operator IDX() const { return get<IDX, W, UB>(ptr, bits, offset); }
+  operator IDX() const { return (bits > 1) ? get<IDX, W, UB>(ptr, bits, offset) : get<IDX, W, UB>(ptr, offset); }
   setter& operator=(const IDX x) {
     set<IDX, W, TS, UB>(x, ptr, bits, offset);
     return *this;
