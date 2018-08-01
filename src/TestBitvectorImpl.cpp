@@ -47,7 +47,6 @@ int main(int argc, char* argv[]) {
     compact::vector<uint64_t> bvc(1,vecLength);
     fill(samps, bvc);
 
-
     auto t1 = sum(bvs);
     auto t2 = sum(bvc);
     std::cerr << "sum 1 = " << t1 << '\n';
