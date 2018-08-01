@@ -40,7 +40,7 @@ public:
   }
 
   inline uint64_t operator[](size_t i) { return r_->rank(i); }
-  BIT_ARRAY* getBA() { return ba_; }
+  //BIT_ARRAY* getBA() { return ba_; }
 private:
   BIT_ARRAY* ba_;
   std::unique_ptr<T> r_{nullptr};
@@ -120,6 +120,8 @@ int main(int argc, char* argv[]) {
   }
   std::cerr << "done\n";
 
+  //  GCRank<>
+
   GCRank<Poppy> gcPoppy;
   std::cerr << "creating GC Rank vector ..";
   {
@@ -171,7 +173,8 @@ int main(int argc, char* argv[]) {
   {
     ScopedTimer t;
     for (size_t i = 0; i < starts.size(); ++i) {
-      statsVec[i] = gcVec[starts[i] - 1 + lens[i]] - gcVec[starts[i]-1];
+      //      statsVec[i] = gcVec[starts[i] - 1 + lens[i]] - gcVec[starts[i]-1];
+      statsVec[i] = gcVec[starts[i] + lens[i]] - gcVec[starts[i]];
     }
   }
   std::cerr << "done\n";
@@ -181,7 +184,7 @@ int main(int argc, char* argv[]) {
   {
     ScopedTimer t;
     for (size_t i = 0; i < starts.size(); ++i) {
-      statsVecRank9[i] = gcR9[starts[i] + lens[i]] - gcR9[starts[i]];
+      statsVecRank9[i] = gcR9[starts[i] + lens[i] + 1] - gcR9[starts[i] + 1];
     }
   }
   std::cerr << "done\n";
@@ -192,7 +195,7 @@ int main(int argc, char* argv[]) {
   {
     ScopedTimer t;
     for (size_t i = 0; i < starts.size(); ++i) {
-      statsVecRank9b[i] = gcR9b[starts[i] + lens[i]] - gcR9b[starts[i]];
+      statsVecRank9b[i] = gcR9b[starts[i] + lens[i] + 1] - gcR9b[starts[i] + 1];
     }
   }
   std::cerr << "done\n";
@@ -202,7 +205,7 @@ int main(int argc, char* argv[]) {
   {
     ScopedTimer t;
     for (size_t i = 0; i < starts.size(); ++i) {
-      statsVecRankPoppy[i] = gcPoppy[starts[i] + lens[i]] - gcPoppy[starts[i]];
+      statsVecRankPoppy[i] = gcPoppy[starts[i] + lens[i] + 1] - gcPoppy[starts[i] + 1];
     }
   }
   std::cerr << "done\n";
