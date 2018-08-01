@@ -1,5 +1,5 @@
 set(TEST_SRCS TestRSSpeed.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp)
-set(TEST_BV_SRCS TestBitVectorImpl.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp)
+set(TEST_BV_SRCS TestBitVectorImpl.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp rank9sel.cpp)
 
 set(FQFEEDER_LIB_SRCS FastxParser.cpp)
 
@@ -9,11 +9,13 @@ include_directories(
 ${TOP_LEVEL_DIR}/include
 ../include
 ../external/include
+/home/linuxbrew/include
 )
 
 link_directories(${TOP_LEVEL_DIR}/lib 
 $ENV{HOME}/lib
 ${CMAKE_CURRENT_SOURCE_DIR}/../external/lib
+/home/linuxbrew/lib
 )
 
 add_executable(test_rank ${TEST_SRCS}) 

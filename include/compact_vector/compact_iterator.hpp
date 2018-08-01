@@ -49,8 +49,10 @@ template<typename IDX, typename W, unsigned int UB>
 static IDX get(const W* p, unsigned int b, unsigned int o) {
   static constexpr size_t Wbits  = bitsof<W>::val;
   static constexpr W      ubmask = ~(W)0 >> (Wbits - UB);
-  W                       mask   = ((~(W)0 >> (Wbits - b)) << o) & ubmask;
+  W                       mask   = ((~(W)0 >> (Wbits - 1)) << o) & ubmask;
   IDX                     res    = (*p & mask) >> o;
+  return res;
+  /*
   if(o + b > UB) {
     const unsigned int over  = o + b - UB;
     mask                     = ~(W)0 >> (Wbits - over);
@@ -58,8 +60,9 @@ static IDX get(const W* p, unsigned int b, unsigned int o) {
   }
   if(std::is_signed<IDX>::value && res & ((IDX)1 << (b - 1)))
     res |= ~(IDX)0 << b;
-
+    
   return res;
+  */
 }
 
 template<typename IDX, typename W, unsigned int UB>
@@ -232,7 +235,7 @@ public:
 
   IDX operator*() const {
     const Derived& self = *static_cast<const Derived*>(this);
-    return (self.bits>1) ? get<IDX, W, UB>(self.ptr, self.bits, self.offset) : get<IDX, W, UB>(self.ptr, self.offset);
+    return get<IDX, W, UB>(self.ptr, self.bits, self.offset); //(self.bits>1) ? get<IDX, W, UB>(self.ptr, self.bits, self.offset) : get<IDX, W, UB>(self.ptr, self.offset);
   }
 
   bool operator==(const Derived& rhs) const {
@@ -376,12 +379,12 @@ public:
   // Get some number of bits
   W get_bits(unsigned int bits) const {
     const Derived& self  = *static_cast<const Derived*>(this);
-    return (bits>1) ? get<W, W, UB>(self.ptr, bits, self.offset) : get<W, W, UB>(self.ptr, self.offset);
+    return get<W, W, UB>(self.ptr, bits, self.offset);//(bits>1) ? get<W, W, UB>(self.ptr, bits, self.offset) : get<W, W, UB>(self.ptr, self.offset);
   }
 
   W get_bits(unsigned int bits, unsigned int offset) const {
     const Derived& self  = *static_cast<const Derived*>(this);
-    return (bits>1) ? get<W, W, UB>(self.ptr, bits, offset) : get<W, W, UB>(self.ptr, offset);
+    return get<W, W, UB>(self.ptr, bits, offset);//(bits>1) ? get<W, W, UB>(self.ptr, bits, offset) : get<W, W, UB>(self.ptr, offset);
   }
 
   template<bool TS = false>

@@ -1,7 +1,9 @@
 #include "sdsl/int_vector.hpp"
+#include "sdsl/rank_support.hpp"
+#include "sdsl/select_support.hpp"
 #include "compact_vector/compact_vector.hpp"
 #include "ScopedTimer.hpp"
-
+#include "rank9sel.h"
 #include <random>
 
 template <typename T>
@@ -20,6 +22,24 @@ size_t sum(T& v) {
     tot += s;
   }
   return tot;
+}
+
+size_t test_sel(std::vector<uint64_t>& p, sdsl::bit_vector::select_1_type& s, size_t nones) {
+  ScopedTimer t;
+  size_t res{0};
+  for (size_t e = 1; e <= nones; ++e){
+    res += s(e);
+  }
+  return res;
+}
+
+size_t test_sel(std::vector<uint64_t>& p, rank9sel& s, size_t nones) {
+  ScopedTimer t;
+  size_t res{0};
+  for (size_t e = 1; e <= nones; ++e){
+    res += s.select(e)-1;
+  }
+  return res;
 }
 
 int main(int argc, char* argv[]) {
@@ -43,17 +63,31 @@ int main(int argc, char* argv[]) {
     std::cerr << "filling sdsl\n";
     sdsl::bit_vector bvs(vecLength);
     fill(samps, bvs);
-    std::cerr << "filling compact\n";
+    //std::cerr << "filling compact\n";
     compact::vector<uint64_t> bvc(1,vecLength);
     fill(samps, bvc);
 
-    auto t1 = sum(bvs);
-    auto t2 = sum(bvc);
+    size_t t1 = sum(bvs);
+    size_t t2 = t1;//sum(bvc);
+    size_t nones = t1;
+    /*
     std::cerr << "sum 1 = " << t1 << '\n';
     std::cerr << "sum 2 = " << t2 << '\n';
+    */
 
-    auto r = memcmp(bvs.data(), bvc.get(), bvc.bytes());
-    std::cerr << "memcmp = " << r << '\n';
+    //auto r = memcmp(bvs.data(), bvc.get(), bvc.bytes());
+    //std::cerr << "memcmp = " << r << '\n';
+
+    {
+      sdsl::bit_vector::select_1_type sels(&bvs);
+      t1 = test_sel(samps, sels, nones);
+      std::cerr << "sum 1 = " << t1 << '\n';
+    }
+
+    rank9sel sel9(bvc.get(), bvs.bit_size());
+
+    t2 = test_sel(samps, sel9, nones);
+    std::cerr << "sum 2 = " << t2 << '\n';
   }
   return 0;
 }
