@@ -334,7 +334,7 @@ uint64_t rank9sel::select( const uint64_t rank ) {
 	assert( rank_in_word >= 0 );
 
 #ifdef DEBUG
-	printf( "Returning %lld\n", word * 64ULL + select_in_word( bits[ word ], rank_in_word ) );
+	printf( "Returning %lld\n", word * 64ULL + select64_pdep_tzcnt( bits[ word ], rank_in_word ) );
 #endif
 	return word * 64ULL + select_in_word( bits[ word ], rank_in_word );
 }

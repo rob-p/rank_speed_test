@@ -149,7 +149,21 @@ const uint64_t overflow[] = {
 
 // A slightly faster version of Gog & Petri's select.
 
-__inline int select_in_word( const uint64_t x, const int k ) {
+// Returns the position of the rank'th 1.  (rank = 0 returns the 1st 1)
+// Returns 64 if there are fewer than rank+1 1s.
+inline uint64_t select_in_word(uint64_t val, int rank) {
+  uint64_t i = 1ULL << rank;
+  asm("pdep %[val], %[mask], %[val]"
+      : [val] "+r" (val)
+      : [mask] "r" (i));
+  asm("tzcnt %[bit], %[index]"
+      : [index] "=r" (i)
+      : [bit] "g" (val)
+      : "cc");
+  return i;
+}
+/*
+inline int select_in_word( const uint64_t x, const int k ) {
 	// Phase 1: sums by byte
 	uint64_t byte_sums = x - ( x >> 1 & 0x5ULL * ONES_STEP_4 );
 	byte_sums = ( byte_sums & 3ULL * ONES_STEP_4 ) + ( ( byte_sums >> 2 ) & 3ULL * ONES_STEP_4 );
@@ -164,4 +178,5 @@ __inline int select_in_word( const uint64_t x, const int k ) {
 	// Phase 3: Locate the relevant byte and look up the result in select_in_byte
 	return place + select_in_byte[ ((x >> place) & 0xFFULL) | (k - ( ( byte_sums << 8 ) >> place & 0xFFULL )) << 8 ];
 }
+*/
 #endif
