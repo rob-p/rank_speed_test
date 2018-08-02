@@ -18,6 +18,7 @@
  *
  */
 
+#include <iostream>
 #include <cstdio>
 #include <ctime>
 #include <cassert>
@@ -35,6 +36,30 @@
 #ifdef COUNTS
 uint64_t single, one_level, two_levels, shorts, longs, longlongs;
 #endif
+
+rank9sel::rank9sel() :
+  bits(nullptr),
+  counts(nullptr), inventory(nullptr), subinventory(nullptr),
+	num_words(0), num_counts(0), inventory_size(0), ones_per_inventory(0),
+  log2_ones_per_inventory(0), num_ones(0) {}
+
+rank9sel& rank9sel::operator=(rank9sel&& other) {
+  bits = other.bits;
+  counts = other.counts;
+  inventory = other.inventory;
+  subinventory = other.subinventory;
+  num_words = other.num_words;
+  num_counts = other.num_counts;
+  inventory_size = other.inventory_size;
+  ones_per_inventory = other.ones_per_inventory;
+  log2_ones_per_inventory = other.log2_ones_per_inventory;
+  num_ones = other.num_ones;
+  other.counts = nullptr;
+  other.inventory = nullptr;
+  other.subinventory = nullptr;
+  return *this;
+}
+
 
 rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 	this->bits = bits;
@@ -56,13 +81,13 @@ rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 	}
 
 	counts[ num_counts ] = c;
-	printf("Number of ones: %lld\n", c );	
+	//printf("Number of ones: %lld\n", c );	
 
 	assert( c <= num_bits );
 
 	inventory_size = ( c + ONES_PER_INVENTORY - 1 ) / ONES_PER_INVENTORY;
 
-	printf("Number of ones per inventory item: %d\n", ONES_PER_INVENTORY );	
+	//printf("Number of ones per inventory item: %d\n", ONES_PER_INVENTORY );	
 	assert( ONES_PER_INVENTORY <= 8 * 64 );
 
 	inventory = new uint64_t[ inventory_size + 1 ]();
@@ -84,12 +109,14 @@ rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 	assert( c == d );
 	inventory[ inventory_size ] = ( ( num_words + 3 ) & ~3ULL ) * 64;
 
-	printf("Inventory entries filled: %lld\n", d / ONES_PER_INVENTORY + 1 );
+	//printf("Inventory entries filled: %lld\n", d / ONES_PER_INVENTORY + 1 );
 
 #ifdef DEBUG
 	printf("First inventories: %lld %lld %lld %lld\n", inventory[ 0 ], inventory[ 1 ], inventory[ 2 ], inventory[ 3 ] );
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 	d = 0;
 	int state;
 	uint64_t *s, first_bit, index, span, block_span, block_left, counts_at_start;
@@ -115,19 +142,19 @@ rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 						assert( ( block_span + 8 & -8LL ) + 8 <= span * 4 );
 
 						int k;
-						for( k = 0; k < block_span; k++ ) {
+						for( k = 0; k < static_cast<int>(block_span); k++ ) {
 							assert( ((uint16_t *)s)[ k + 8 ] == 0 );
 							((uint16_t *)s)[ k + 8 ] = counts[ ( block_left + k + 1 ) * 2 ] - counts_at_start;
 						}
 
-						for( ; k < ( block_span + 8 & -8LL ); k++ ) {
+						for( ; k < static_cast<int>( (block_span + 8) & -8LL ); k++ ) {
 							assert( ((uint16_t *)s)[ k + 8 ] == 0 );
 							((uint16_t *)s)[ k + 8 ] = 0xFFFFU;
 						}
 
 						assert( block_span / 8 <= 8 );
 
-						for( k = 0; k < block_span / 8; k++ ) {
+						for( k = 0; k < static_cast<int>(block_span / 8); k++ ) {
 							assert( ((uint16_t *)s)[ k ] == 0 );
 							((uint16_t *)s)[ k ] = counts[ ( block_left + ( k + 1 ) * 8 ) * 2 ] - counts_at_start;
 						}
@@ -141,12 +168,12 @@ rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 						assert( ( block_span + 8 & -8LL ) <= span * 4 );
 
 						int k;
-						for( k = 0; k < block_span; k++ ) {
+						for( k = 0; k < static_cast<int>(block_span); k++ ) {
 							assert( ((uint16_t *)s)[ k ] == 0 );
 							((uint16_t *)s)[ k ] = counts[ ( block_left + k + 1 ) * 2 ] - counts_at_start;
 						}
 
-						for( ; k < ( block_span + 8 & -8LL ); k++ ) {
+						for( ; k < static_cast<int>( (block_span + 8) & -8LL ); k++ ) {
 							assert( ((uint16_t *)s)[ k ] == 0 );
 							((uint16_t *)s)[ k ] = 0xFFFFU;
 						}
@@ -172,6 +199,7 @@ rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 
 				d++;
 			}
+#pragma GCC diagnostic pop
 
 
 #ifndef NDEBUG
@@ -199,9 +227,9 @@ rank9sel::rank9sel( const uint64_t * const bits, const uint64_t num_bits ) {
 }
 
 rank9sel::~rank9sel() {
-	delete [] counts;
-	delete [] inventory;
-	delete [] subinventory;
+	if (counts) {delete [] counts;}
+	if (inventory) {delete [] inventory;}
+	if (subinventory) {delete [] subinventory;}
 }
 
 uint64_t rank9sel::rank( const uint64_t k ) {
@@ -315,7 +343,7 @@ uint64_t rank9sel::select( const uint64_t rank ) {
 	const uint64_t offset_in_block = ( ULEQ_STEP_9( subcounts, rank_in_block_step_9 ) * ONES_STEP_9 >> 54 & 0x7 );
 
 	const uint64_t word = block_left + offset_in_block;
-	const uint64_t rank_in_word = rank_in_block - ( subcounts >> ( offset_in_block - 1 & 7 ) * 9 & 0x1FF );
+	const uint64_t rank_in_word = rank_in_block - ( subcounts >> ( (offset_in_block - 1) & 7 ) * 9 & 0x1FF );
 #ifdef DEBUG
 	printf( "rank_in_block: %lld offset_in_block: %lld rank_in_word: %lld compare: %016llx shift: %lld\n", rank_in_block, offset_in_block, rank_in_word, UCOMPARE_STEP_9( rank_in_block_step_9, subcounts ), subcounts >> ( offset_in_block - 1 ) * 9 & 0x1FF );
 #endif

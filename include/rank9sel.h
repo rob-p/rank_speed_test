@@ -21,7 +21,7 @@
 #ifndef rank9sel_h
 #define rank9sel_h
 #include <stdint.h>
-#include "popcount.h"
+//#include "popcount.h"
 #include "select.h"
 #include "macros.h"
 
@@ -32,6 +32,8 @@ private:
 	uint64_t num_words, num_counts, inventory_size, ones_per_inventory, log2_ones_per_inventory, num_ones;
 
 public:
+	rank9sel();
+  rank9sel& operator=(rank9sel&& other);
 	rank9sel( const uint64_t * const bits, const uint64_t num_bits );
 	~rank9sel();
 	uint64_t rank( const uint64_t pos );

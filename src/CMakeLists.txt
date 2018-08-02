@@ -1,5 +1,5 @@
 set(TEST_SRCS TestRSSpeed.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp)
-set(TEST_BV_SRCS TestBitVectorImpl.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp rank9sel.cpp)
+set(TEST_BV_SRCS TestBitvectorImpl.cpp rank9b.cpp bit_array.c poppy.cpp rank9.cpp rank9sel.cpp)
 
 set(FQFEEDER_LIB_SRCS FastxParser.cpp)
 
