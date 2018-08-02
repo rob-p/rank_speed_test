@@ -208,7 +208,7 @@ uint64_t rank9sel::rank( const uint64_t k ) {
 	const uint64_t word = k / 64;
 	const uint64_t block = word / 4 & ~1;
 	const int offset = word % 8 - 1;
-	return counts[ block ] + ( counts[ block + 1 ] >> ( offset + ( offset >> sizeof offset * 8 - 4 & 0x8 ) ) * 9 & 0x1FF ) + __builtin_popcountll( bits[ word ] & ( ( 1ULL << k % 64 ) - 1 ) );
+	return counts[ block ] + ( counts[ block + 1 ] >> ( offset + ( offset >> ((sizeof(offset) * 8) - 4) & 0x8 ) ) * 9 & 0x1FF ) + __builtin_popcountll( bits[ word ] & ( ( 1ULL << k % 64 ) - 1 ) );
 }
 
 

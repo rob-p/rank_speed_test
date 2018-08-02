@@ -37,9 +37,23 @@ size_t test_sel(std::vector<uint64_t>& p, rank9sel& s, size_t nones) {
   ScopedTimer t;
   size_t res{0};
   for (size_t e = 1; e <= nones; ++e){
-    res += s.select(e)-1;
+    res += s.select(e-1);
   }
   return res;
+}
+
+void first_diff(sdsl::bit_vector::select_1_type& s, rank9sel& s2, size_t nones) {
+  size_t res{0};
+  for (size_t e = 1; e <= nones; ++e){
+    auto a = s(e);
+    auto b = s2.select(e-1);
+    if (a != b) {
+      std::cerr << "e = " << e << '\n';
+      std::cerr << "sdsl     says select(" << e << ") = " << a << '\n';
+      std::cerr << "rank9sel says select(" << e << ") = " << b << '\n';
+      return;
+    }
+  }
 }
 
 int main(int argc, char* argv[]) {
@@ -78,16 +92,17 @@ int main(int argc, char* argv[]) {
     //auto r = memcmp(bvs.data(), bvc.get(), bvc.bytes());
     //std::cerr << "memcmp = " << r << '\n';
 
-    {
-      sdsl::bit_vector::select_1_type sels(&bvs);
-      t1 = test_sel(samps, sels, nones);
-      std::cerr << "sum 1 = " << t1 << '\n';
-    }
+    auto bvs2 = bvs;
+    sdsl::bit_vector::select_1_type sels(&bvs);
+    t1 = test_sel(samps, sels, nones);
+    std::cerr << "sum 1 = " << t1 << '\n';
 
-    rank9sel sel9(bvc.get(), bvs.bit_size());
+    rank9sel sel9(bvs2.data(), bvs2.bit_size());
 
     t2 = test_sel(samps, sel9, nones);
     std::cerr << "sum 2 = " << t2 << '\n';
+
+    first_diff(sels, sel9, nones);
   }
   return 0;
 }
