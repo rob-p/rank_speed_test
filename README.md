@@ -5,6 +5,23 @@
 
 Other compiler flags : `-DNDEBUG -pthread -mpopcnt -msse4.2 -O3 -DHAVE_ANSI_TERM -DHAVE_SSTREAM -Wall -pedantic -std=c++17`
 
+"new style loop" denotes :
+
+```
+for (const auto& e : vector) {
+  sum += e;
+}
+```
+
+while "old style loop" denotes :
+
+```
+for (size_t i = 0; i < num_elem; ++i) {
+  sum += vector[i];
+}
+```
+
+
 GCC without `-march=native`
 
 | sdsl (new style loop) | sdsl (old style loop) |
