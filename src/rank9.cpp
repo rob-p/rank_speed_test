@@ -20,16 +20,25 @@
 
 #include <cassert>
 #include <cstring>
-#include "rank9.h"
+#include "rs9/rank9.h"
 
-rank9::rank9() {}
+rank9::rank9() : counts(nullptr) {}
+
+rank9& rank9::operator=(rank9&& other) {
+  bits = other.bits;
+  num_words = other.num_words;
+  num_counts = other.num_words;
+  counts = other.counts;
+  other.counts = nullptr;
+  return *this;
+}
 
 rank9::rank9( const uint64_t * const bits, const uint64_t num_bits ) {
 	this->bits = bits;
 	num_words = ( num_bits + 63 ) / 64;
 	num_counts = ( ( num_bits + 64 * 8 - 1 ) / ( 64 * 8 ) ) * 2;
-	
-	// Init rank structure
+
+  // Init rank structure
 	counts = new uint64_t[ num_counts + 1 ]();
 
 	uint64_t c = 0;
@@ -49,7 +58,7 @@ rank9::rank9( const uint64_t * const bits, const uint64_t num_bits ) {
 }
 
 rank9::~rank9() {
-	delete [] counts;
+	if (counts) { delete [] counts; }
 }
 
 

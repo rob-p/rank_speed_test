@@ -20,7 +20,7 @@ set (CPACK_SOURCE_PACKAGE_FILE_NAME
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 #set the required set the required compile flags
-set (CMAKE_CXX_FLAGS "-DNDEBUG -fPIC -pthread -mpopcnt -msse4.2 -D__SSE4_2_ -march=native -O3 -DHAVE_ANSI_TERM -DHAVE_SSTREAM -Wall -pedantic -std=c++11")
+set (CMAKE_CXX_FLAGS "-DNDEBUG -pthread -funroll-all-loops -march=native -O3 -DHAVE_ANSI_TERM -DHAVE_SSTREAM -Wall -pedantic -std=c++17")
 
 ##
 # OSX is strange (some might say, stupid in this regard). Deal with it's quirkines here.
@@ -52,7 +52,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set (BOOST_CONFIGURE_TOOLSET "")
     set (BOOST_EXTRA_FLAGS "")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 else ()
     message(FATAL_ERROR "Your C++ compiler does not support C++11.")
 endif ()
