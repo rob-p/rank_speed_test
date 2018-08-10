@@ -17,7 +17,7 @@ void fill(std::vector<uint64_t>& p, T& v) {
 
 
 template <typename T>
-__attribute__((flatten)) size_t sum_new(T& v, size_t nel) {
+__attribute__((flatten)) size_t sum_new(const T& v, size_t nel) {
   ScopedTimer t;
   size_t tot{0};
   for (auto s : v) {
@@ -27,7 +27,7 @@ __attribute__((flatten)) size_t sum_new(T& v, size_t nel) {
 }
 
 template <typename T>
-__attribute__((flatten)) size_t sum_old(T& v, size_t nel)  {
+__attribute__((flatten)) size_t sum_old(const T& v, size_t nel)  {
   ScopedTimer t;
   size_t tot{0};
   for (size_t i = 0; i < nel; ++i){
@@ -73,7 +73,8 @@ void first_diff(sdsl::bit_vector::select_1_type& s, rank9sel& s2, size_t nones) 
 }
 
 template <typename Vec1T, typename Vec2T>
-void testVecs(Vec1T& bvs, Vec2T& bvc, size_t vecLength) {
+void testVecs(Vec1T& bvs, Vec2T& bvc, size_t vecLength, bool is_static=false) {
+  std::vector<bool> stdbv(vecLength);
   std::cerr << "generating random queries ...";
   std::mt19937 gen(8675309); //Standard mersenne_twister_engine seeded with rd()
   std::uniform_int_distribution<uint64_t> dis(1, vecLength);
@@ -84,30 +85,44 @@ void testVecs(Vec1T& bvs, Vec2T& bvc, size_t vecLength) {
     //samps[i] = start;
     bvs[start] = 1;
     bvc[start] = 1;
+    if(is_static)
+      stdbv[start] = 1;
   }
 
   {
     size_t t1{0};
     size_t t2{0};
     std::cerr << "\nsum sdsl (new)\n";
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 2; ++i) {
       t1 = sum_new(bvs, vecLength);
     }
     std::cerr << "\nsum sdsl (old)\n";
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 2; ++i) {
       t1 = sum_old(bvs, vecLength);
     }
     std::cerr << "sum 1 = " << t1 << '\n';
     std::cerr << "\nsum compact (new)\n";
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 2; ++i) {
       t2 = sum_new(bvc, vecLength);
     }
     std::cerr << "\nsum compact (old)\n";
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 2; ++i) {
       t2 = sum_old(bvc, vecLength);
     }
     std::cerr << "\n";
     std::cerr << "sum 2 = " << t2 << '\n';
+    if (is_static) {
+      std::cerr << "\nsum std (new)\n";
+      for (size_t i = 0; i < 2; ++i) {
+        t1 = sum_new(stdbv, vecLength);
+      }
+      std::cerr << "\nsum std (old)\n";
+      for (size_t i = 0; i < 2; ++i) {
+        t1 = sum_old(stdbv, vecLength);
+      }
+      std::cerr << "\n";
+      std::cerr << "sum 3 = " << t1 << '\n';
+    }
   }
 }
 
@@ -115,17 +130,20 @@ int main(int argc, char* argv[]) {
 
   size_t vecLength = std::stoll(argv[1]);
 
+  /*
   std::cerr << "\n\n Dynamically Sized \n\n";
   {
     sdsl::int_vector<> bvs(vecLength, 0, 1);
     compact::vector<uint64_t> bvc(1, vecLength);
     testVecs(bvs, bvc, vecLength);
   }
+  */
+
   std::cerr << "\n\n Statically Sized \n\n";
   {
     sdsl::bit_vector bvs(vecLength);
     compact::vector<uint64_t, 1> bvc(vecLength);
-    testVecs(bvs, bvc, vecLength);
+    testVecs(bvs, bvc, vecLength, true);
   }
 
   {

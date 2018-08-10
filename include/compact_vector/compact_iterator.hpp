@@ -90,7 +90,7 @@ struct gs {
     }
   }
   template<bool TS>
-  static inline IDX set(IDX x, W* p, unsigned b, unsigned o) { return set(x, p, o); }
+  static inline void set(IDX x, W* p, unsigned b, unsigned o) { set<TS>(x, p, o); }
 
   // Do a CAS at position p, offset o and number of bits b. Expect value
   // exp and set value x. It takes care of the tricky case when the
@@ -308,6 +308,85 @@ struct mask_store<W, true> {
 };
 
 
+template<class UType, typename IDX, unsigned BITS, typename W, unsigned UB>
+class common_helper {
+  typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+  static constexpr unsigned used_bits = UB;
+public:
+  static constexpr IDX accessor(const UType& self, const W* ptr, const difference_type n) {
+    return *(self + n);
+  }
+};
+
+  // There is, I'm sure, an easy and clever way to do this without specializing on
+  // W=uint64_t.  The indexing code below is from sdsl-lite int_vector
+  // https://github.com/simongog/sdsl-lite/blob/master/include/sdsl/int_vector.hpp
+template<class UType, typename IDX, unsigned UB>
+class common_helper<UType, IDX, 1, uint64_t, UB> {
+  typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+  static constexpr unsigned used_bits = UB;
+public:
+  static constexpr IDX accessor(const UType& self, const uint64_t* ptr, const difference_type n) {
+    return ((*(ptr+(n>>6)))>>(n&0x3F))&1;
+  }
+};
+
+  // There is, I'm sure, an easy and clever way to do this without specializing on
+  // W=uint64_t.  The indexing code below is from sdsl-lite int_vector
+  // https://github.com/simongog/sdsl-lite/blob/master/include/sdsl/int_vector.hpp
+  template<class UType, typename IDX, unsigned UB>
+  class common_helper<UType, IDX, 8, uint64_t, UB> {
+    typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+    static constexpr unsigned used_bits = UB;
+  public:
+    static constexpr IDX accessor(const UType& self, const uint64_t* ptr, const difference_type n) {
+      return *(static_cast<const uint8_t*>(ptr) + n);
+    }
+  };
+
+  // There is, I'm sure, an easy and clever way to do this without specializing on
+  // W=uint64_t.  The indexing code below is from sdsl-lite int_vector
+  // https://github.com/simongog/sdsl-lite/blob/master/include/sdsl/int_vector.hpp
+  template<class UType, typename IDX, unsigned UB>
+  class common_helper<UType, IDX, 16, uint64_t, UB> {
+    typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+    static constexpr unsigned used_bits = UB;
+  public:
+    static constexpr IDX accessor(const UType& self, const uint64_t* ptr, const difference_type n) {
+      return *(static_cast<const uint16_t*>(ptr) + n);
+    }
+  };
+
+  // There is, I'm sure, an easy and clever way to do this without specializing on
+  // W=uint64_t.  The indexing code below is from sdsl-lite int_vector
+  // https://github.com/simongog/sdsl-lite/blob/master/include/sdsl/int_vector.hpp
+  template<class UType, typename IDX, unsigned UB>
+  class common_helper<UType, IDX, 32, uint64_t, UB> {
+    typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+    static constexpr unsigned used_bits = UB;
+  public:
+    static constexpr IDX accessor(const UType& self, const uint64_t* ptr, const difference_type n) {
+      return *(static_cast<const uint32_t*>(ptr) + n);
+    }
+  };
+
+  // There is, I'm sure, an easy and clever way to do this without specializing on
+  // W=uint64_t.  The indexing code below is from sdsl-lite int_vector
+  // https://github.com/simongog/sdsl-lite/blob/master/include/sdsl/int_vector.hpp
+  template<class UType, typename IDX, unsigned UB>
+  class common_helper<UType, IDX, 64, uint64_t, UB> {
+    typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+    static constexpr unsigned used_bits = UB;
+  public:
+    static constexpr IDX accessor(const UType& self, const uint64_t* ptr, const difference_type n) {
+      return *(ptr + n);
+    }
+  };
+
+
+
+
+
 template<class Derived, typename IDX, unsigned BITS, typename W, unsigned UB>
 class common {
 public:
@@ -344,7 +423,209 @@ public:
 
   IDX operator*() const {
     const Derived& self = *static_cast<const Derived*>(this);
-    return gs<IDX, BITS, W, UB>::get(self.m_ptr, self.bits(), self.m_offset);
+    return gs<IDX, BITS, W, UB>::get(self.m_ptr, BITS, self.m_offset);
+  }
+
+  bool operator==(const Derived& rhs) const {
+    const Derived& self = *static_cast<const Derived*>(this);
+    return self.m_ptr == rhs.m_ptr && self.m_offset == rhs.m_offset;
+  }
+  bool operator!=(const Derived& rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator==(std::nullptr_t p) {
+    const Derived& self = *static_cast<const Derived*>(this);
+    return self.m_ptr == nullptr && self.m_offset == 0;
+  }
+  bool operator!=(std::nullptr_t p) {
+    return !(*this == nullptr);
+  }
+
+  bool operator<(const Derived& rhs) const {
+    const Derived& self = *static_cast<const Derived*>(this);
+    return self.m_ptr < rhs.m_ptr || (self.m_ptr == rhs.m_ptr && self.m_offset < rhs.m_offset);
+  }
+  bool operator>(const Derived& rhs) const {
+    const Derived& self = *static_cast<const Derived*>(this);
+    return self.m_ptr > rhs.m_ptr || (self.m_ptr == rhs.m_ptr && self.m_offset > rhs.m_offset);
+  }
+  bool operator>=(const Derived& rhs) const {
+    return !(*this < rhs);
+  }
+  bool operator<=(const Derived& rhs) const {
+    return !(*this > rhs);
+  }
+
+  Derived& operator++() {
+    Derived& self = *static_cast<Derived*>(this);
+    self.m_offset += BITS;
+    if(self.m_offset >= UB) {
+      ++self.m_ptr;
+      self.m_offset -= UB;
+    }
+    return self;
+  }
+  Derived operator++(int) {
+    Derived res(*static_cast<Derived*>(this));
+    ++*this;
+    return res;
+  }
+
+  Derived& operator--() {
+    Derived& self = *static_cast<Derived*>(this);
+    if(BITS > self.m_offset) {
+      --self.m_ptr;
+      self.m_offset += UB;
+    }
+    self.m_offset -= BITS;
+    return self;
+  }
+  Derived operator--(int) {
+    Derived res(*static_cast<Derived*>(this));
+    --*this;
+    return res;
+  }
+
+  Derived& operator+=(difference_type n) {
+    Derived&     self    = *static_cast<Derived*>(this);
+    if(n < 0) {
+      self -= -n;
+      return self;
+    }
+
+    const size_t nbbits  = self.m_bits * n;
+    self.m_ptr          += nbbits / UB;
+    self.m_offset       += nbbits % UB;
+    if(self.m_offset >= UB) {
+      ++self.m_ptr;
+      self.m_offset -= UB;
+    }
+    return self;
+  }
+
+  Derived operator+(difference_type n) const {
+    Derived res(*static_cast<const Derived*>(this));
+    return res += n;
+  }
+
+  Derived& operator-=(difference_type n) {
+    Derived&           self     = *static_cast<Derived*>(this);
+    if(n < 0) {
+      self += -n;
+      return self;
+    }
+
+    const size_t      nbbits    = self.m_bits * n;
+    self.m_ptr                 -= nbbits / UB;
+    const unsigned ooffset  = nbbits % UB;
+    if(ooffset > self.m_offset) {
+      --self.m_ptr;
+      self.m_offset += UB;
+    }
+    self.m_offset -= ooffset;
+    return self;
+  }
+
+  Derived operator-(difference_type n) const {
+    Derived res(*static_cast<const Derived*>(this));
+    return res -= n;
+  }
+
+  template<unsigned BB, typename DD>
+  difference_type operator-(const common<DD, IDX, BB, W, UB>& rhs_) const {
+    const Derived& self  = *static_cast<const Derived*>(this);
+    const DD&      rhs   = *static_cast<const DD*>(&rhs_);
+    ptrdiff_t      wdiff = (self.m_ptr - rhs.m_ptr) * UB;
+    if(self.m_offset < rhs.m_offset)
+      wdiff += (ptrdiff_t)((UB + self.m_offset) - rhs.m_offset) - (ptrdiff_t)UB;
+    else
+      wdiff += self.m_offset - rhs.m_offset;
+    return wdiff / BITS;
+  }
+
+  
+   constexpr IDX operator[](const difference_type n) const {
+     const Derived& self  = *static_cast<const Derived*>(this);
+     return common_helper<Derived, IDX, BITS, W, UB>::accessor(self, self.m_ptr, n);
+     //return *(self + n);
+  }
+
+  // Extra methods which are not part of an iterator interface
+
+  const W* get_ptr() const {
+    const Derived& self  = *static_cast<const Derived*>(this);
+    return self.ptr;
+  }
+  unsigned get_offset() const {
+    const Derived& self  = *static_cast<const Derived*>(this);
+    return self.offset;
+  }
+  unsigned get_bits() const {
+    const Derived& self  = *static_cast<const Derived*>(this);
+    return BITS;
+  }
+
+  // Get some number of bits
+  W get_bits(unsigned bits) const {
+    const Derived& self  = *static_cast<const Derived*>(this);
+    return gs<W, BITS, W, UB>::get(self.ptr, BITS, self.offset);
+  }
+
+  W get_bits(unsigned bits, unsigned offset) const {
+    const Derived& self  = *static_cast<const Derived*>(this);
+    return gs<W, BITS, W, UB>::get(self.ptr, BITS, offset);
+  }
+
+  template<bool TS = false>
+  void set_bits(W x, unsigned bits) {
+    Derived& self  = *static_cast<Derived*>(this);
+    gs<W, BITS, W, UB>::set<TS>(x, self.ptr, BITS, self.offset);
+  }
+};
+
+
+
+  /**
+   * Dynamic
+   **/
+  template<class Derived, typename IDX, typename W, unsigned UB>
+  class common<Derived, IDX, 0, W, UB> {
+public:
+  std::ostream& print(std::ostream& os) const {
+    const Derived& self = *static_cast<const Derived*>(this);
+    return os << '<' << (void*)self.ptr << '+' << self.offset << ',' << self.bits << '>';
+  }
+
+protected:
+  static constexpr unsigned Wbits = bitsof<W>::val;
+  // UB is the number of bits actually used in a word.
+  static_assert(UB <= Wbits,
+                "Number of used bits must be less than number of bits in a word");
+  static_assert(sizeof(IDX) <= sizeof(W),
+                "The size of integral type IDX must be less than the word type W");
+
+public:
+  typedef typename std::iterator<std::random_access_iterator_tag, IDX>::difference_type difference_type;
+  static constexpr unsigned used_bits = UB;
+
+  Derived& operator=(const Derived& rhs) {
+    Derived& self = *static_cast<Derived*>(this);
+    self.ptr      = rhs.ptr;
+    self.offset   = rhs.offset;
+    self.bits(rhs.bits());
+    return self;
+  }
+
+  Derived& operator=(std::nullptr_t p) {
+    Derived& self = *static_cast<Derived*>(this);
+    self.ptr      = nullptr;
+    self.offset   = 0;
+  }
+
+  IDX operator*() const {
+    const Derived& self = *static_cast<const Derived*>(this);
+    return gs<IDX, 0, W, UB>::get(self.m_ptr, self.m_bits, self.m_offset);
   }
 
   bool operator==(const Derived& rhs) const {
@@ -465,7 +746,7 @@ public:
     return wdiff / self.bits();
   }
 
-  IDX operator[](const difference_type n) const {
+    IDX operator[](const difference_type n) const {
     const Derived& self  = *static_cast<const Derived*>(this);
     return *(self + n);
   }
@@ -488,20 +769,20 @@ public:
   // Get some number of bits
   W get_bits(unsigned bits) const {
     const Derived& self  = *static_cast<const Derived*>(this);
-    return gs<W, BITS, W, UB>::get(self.ptr, bits, self.offset);
+    return gs<W, 0, W, UB>::get(self.ptr, bits, self.offset);
   }
 
   W get_bits(unsigned bits, unsigned offset) const {
     const Derived& self  = *static_cast<const Derived*>(this);
-    return gs<W, BITS, W, UB>::get(self.ptr, bits, offset);
+    return gs<W, 0, W, UB>::get(self.ptr, bits, offset);
   }
 
   template<bool TS = false>
   void set_bits(W x, unsigned bits) {
     Derived& self  = *static_cast<Derived*>(this);
-    gs<W, BITS, W, UB>::set<TS>(x, self.ptr, bits, self.offset);
+    gs<W, 0, W, UB>::set<TS>(x, self.ptr, bits, self.offset);
   }
-};
+  };
 
 template<typename W, int I = sizeof(W)>
 struct swap_word_mask {
@@ -596,7 +877,7 @@ public:
   lhs_setter_common(W* p, unsigned o) : ptr(p), offset(o) { }
   operator IDX() const {
     const Derived& self = *static_cast<const Derived*>(this);
-    return gs<IDX, 0, W, UB>::get(ptr, self.bits(), offset);
+    return gs<IDX, BITS, W, UB>::get(ptr, self.bits(), offset);
   }
   iterator operator&() {
     Derived& self = *static_cast<Derived*>(this);
@@ -611,6 +892,33 @@ public:
 template<typename IDX, unsigned BITS, typename W, bool TS, unsigned UB>
 class lhs_setter;
 
+/**
+* For static number of bits
+**/
+template<typename IDX, unsigned BITS, typename W, bool TS, unsigned UB>
+class lhs_setter
+  : public lhs_setter_common<lhs_setter<IDX, BITS, W, TS, UB>, IDX, BITS, W, TS, UB>
+{
+  typedef lhs_setter_common<lhs_setter<IDX, BITS, W, TS, UB>, IDX, BITS, W, TS, UB> super;
+  unsigned m_bits;                // number of bits in an integral type
+
+public:
+  lhs_setter(W* p, int b, int o) : super(p, o), m_bits(b) { }
+  lhs_setter& operator=(const IDX x) {
+    gs<IDX, BITS, W, UB>::template set<TS>(x, super::ptr, BITS, super::offset);
+    return *this;
+  }
+  lhs_setter& operator=(const lhs_setter& rhs) {
+    gs<IDX, BITS, W, UB>::template set<TS>((IDX)rhs, super::ptr, BITS, super::offset);
+    return *this;
+  }
+
+  constexpr unsigned bits() const { return BITS; }
+};
+
+/**
+* For dynamic number of bits
+**/
 template<typename IDX, typename W, bool TS, unsigned UB>
 class lhs_setter<IDX, 0, W, TS, UB>
   : public lhs_setter_common<lhs_setter<IDX, 0, W, TS, UB>, IDX, 0, W, TS, UB>
@@ -641,6 +949,60 @@ void swap(lhs_setter<I, BITS, W, TS, UB> x, lhs_setter<I, BITS, W, TS, UB> y) {
 
 } // namespace iterator_imp
 
+/**
+ * For static number of bits
+ **/
+template<typename IDX, unsigned BITS, typename W, bool TS, unsigned UB>
+class iterator :
+    public std::iterator<std::random_access_iterator_tag, IDX>,
+    public iterator_imp::common<iterator<IDX, BITS, W, TS, UB>, IDX, BITS, W, UB>
+{
+  W*       m_ptr;
+  unsigned m_bits;                // number of bits in an integral type
+  unsigned m_offset;
+
+  friend class iterator<IDX, BITS, W, !TS, UB>;
+  friend class const_iterator<IDX, BITS, W, UB>;
+  friend class iterator_imp::common<iterator<IDX, BITS, W, TS, UB>, IDX, BITS, W, UB>;
+  friend class iterator_imp::common<const_iterator<IDX, BITS, W, UB>, IDX, BITS, W, UB>;
+
+  typedef std::iterator<std::random_access_iterator_tag, IDX> super;
+public:
+  typedef typename super::value_type                  value_type;
+  typedef typename super::difference_type             difference_type;
+  typedef IDX                                         idx_type;
+  typedef W                                           word_type;
+  typedef iterator_imp::lhs_setter<IDX, BITS, W, TS, UB> lhs_setter_type;
+
+  iterator() = default;
+  iterator(W* p, unsigned b, unsigned o)
+    : m_ptr(p), m_bits(b), m_offset(o) { }
+  template<unsigned BITS2, bool TTS>
+  iterator(const iterator<IDX, BITS2, W, TTS>& rhs)
+    : m_ptr(rhs.m_ptr), m_bits(rhs.m_bits), m_offset(rhs.m_offset) { }
+  iterator(std::nullptr_t)
+    : m_ptr(nullptr), m_bits(0), m_offset(0) { }
+
+  lhs_setter_type operator*() { return lhs_setter_type(m_ptr, BITS, m_offset); }
+  lhs_setter_type operator[](const difference_type n) const {
+    return *(*this + n);
+  }
+
+  // CAS val. Does NOT return existing value at pointer. Return true
+  // if successful.
+  inline bool cas(const IDX x, const IDX exp) {
+    return iterator_imp::gs<IDX, BITS, W, UB>::cas(x, exp, m_ptr, BITS, m_offset);
+  }
+
+  unsigned bits() const { return BITS; }
+protected:
+  void bits(unsigned b) { m_bits = b; }
+};
+
+
+/**
+ * For dynamic number of bits
+ **/
 template<typename IDX, typename W, bool TS, unsigned UB>
 class iterator<IDX, 0, W, TS, UB> :
     public std::iterator<std::random_access_iterator_tag, IDX>,
@@ -688,6 +1050,50 @@ protected:
   void bits(unsigned b) { m_bits = b; }
 };
 
+/**
+ * For static number of bits
+ **/
+template<typename IDX, unsigned BITS, typename W, unsigned UB>
+class const_iterator :
+  public std::iterator<std::random_access_iterator_tag, const IDX>,
+  public iterator_imp::common<const_iterator<IDX, BITS, W, UB>, IDX, BITS, W, UB>
+{
+  const W* m_ptr;
+  unsigned m_bits;                // number of bits in an integral type
+  unsigned m_offset;
+
+  friend class iterator<IDX, BITS, W>;
+  friend class iterator_imp::common<iterator<IDX, BITS, W, true, UB>, IDX, BITS, W, UB>;
+  friend class iterator_imp::common<iterator<IDX, BITS, W, false, UB>, IDX, BITS, W, UB>;
+  friend class iterator_imp::common<const_iterator<IDX, BITS, W, UB>, IDX, BITS, W, UB>;
+
+  typedef std::iterator<std::random_access_iterator_tag, IDX> super;
+public:
+  typedef typename super::value_type      value_type;
+  typedef typename super::difference_type difference_type;
+  typedef IDX idx_type;
+  typedef W   word_type;
+
+
+  const_iterator() = default;
+  const_iterator(const W* p, unsigned b, unsigned o)
+    : m_ptr(p), m_bits(b), m_offset(o) { }
+  const_iterator(const const_iterator& rhs)
+    : m_ptr(rhs.m_ptr), m_bits(rhs.m_bits), m_offset(rhs.m_offset) { }
+  template<unsigned BITS2, bool TS>
+  const_iterator(const iterator<IDX, BITS2, W, TS>& rhs)
+    : m_ptr(rhs.m_ptr), m_bits(rhs.m_bits), m_offset(rhs.m_offset) { }
+  const_iterator(std::nullptr_t)
+    : m_ptr(nullptr), m_bits(0), m_offset(0) { }
+
+  constexpr unsigned bits() const { return BITS; }
+  void bits(unsigned b) { m_bits = b; }
+};
+
+
+/**
+ * For dynamic number of bits
+ **/
 template<typename IDX, typename W, unsigned UB>
 class const_iterator<IDX, 0, W, UB> :
   public std::iterator<std::random_access_iterator_tag, const IDX>,
@@ -721,7 +1127,7 @@ public:
   const_iterator(std::nullptr_t)
     : m_ptr(nullptr), m_bits(0), m_offset(0) { }
 
-  unsigned bits() const { return m_bits; }
+  constexpr unsigned bits() const { return m_bits; }
   void bits(unsigned b) { m_bits = b; }
 };
 

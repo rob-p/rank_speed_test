@@ -34,9 +34,9 @@ public:
     return total_bits / UB + (total_bits % UB != 0);
   }
 
-  typedef compact::iterator<IDX, 0, W, TS, UB>   iterator;
-  typedef compact::const_iterator<IDX, 0, W, UB> const_iterator;
-  typedef compact::iterator<IDX, 0, W, true, UB> mt_iterator; // Multi thread safe version
+  typedef compact::iterator<IDX, BITS, W, TS, UB>   iterator;
+  typedef compact::const_iterator<IDX, BITS, W, UB> const_iterator;
+  typedef compact::iterator<IDX, BITS, W, true, UB> mt_iterator; // Multi thread safe version
   typedef std::reverse_iterator<iterator>        reverse_iterator;
   typedef std::reverse_iterator<const_iterator>  const_reverse_iterator;
 
@@ -98,7 +98,7 @@ public:
   W* get() { return m_mem; }
   const W* get() const { return m_mem; }
   size_t bytes() const { return sizeof(W) * elements_to_words(m_capacity, bits()); }
-  inline unsigned bits() const { return static_cast<const Derived*>(this)->bits(); }
+  inline constexpr unsigned bits() const { return static_cast<const Derived*>(this)->bits(); }
   static constexpr unsigned static_bits() { return BITS; }
   static constexpr unsigned used_bits() { return UB; }
   static constexpr bool thread_safe() { return TS; }
@@ -146,7 +146,8 @@ public:
     , m_bits(b)
   { }
 
-  inline unsigned bits() const { return m_bits; }
+  inline constexpr unsigned bits() const { return m_bits; }
+  static constexpr unsigned static_bits() { return 0; }
 };
 
 } // namespace vector_imp
@@ -243,6 +244,7 @@ public:
   { }
 
   static constexpr unsigned bits() { return BITS; }
+  static constexpr unsigned static_bits() { return BITS; }
 };
 
 
@@ -306,6 +308,7 @@ public:
   { }
 
   static constexpr unsigned bits() { return BITS; }
+  static constexpr unsigned static_bits() { return BITS; }
 };
 
 template<typename IDX, typename W, typename Allocator>
